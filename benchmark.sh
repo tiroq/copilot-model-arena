@@ -133,6 +133,38 @@ run() {
   done
 }
 
+run_judge_audit() {
+  local judge="$1"
+  local safe_judge="${judge// /_}"
+  local report_path="$RESULTS_DIR/audit-${safe_judge}.md"
+  local log_path="$RESULTS_DIR/audit-${safe_judge}.log"
+  local metrics_path="$RESULTS_DIR/audit-${safe_judge}.json"
+  local prompt
+  prompt="Independently audit all implementations under results. For each task/model inspect diff and run tests. Write ${report_path} with 0-100 score, correctness, tests, scope, defects, evidence. Do not modify solutions."
+
+  local start end copilot_exit
+  start=$(date +%s)
+
+  echo "\n=== Auditing with ${judge} ==="
+  echo "Report: $report_path"
+  echo "Log: $log_path"
+
+  set +e
+  (cd "$ROOT_DIR" && copilot --model "$judge" --allow-all --no-ask-user --prompt "$prompt") 2>&1 | tee "$log_path"
+  copilot_exit=${PIPESTATUS[0]}
+  set -e
+
+  end=$(date +%s)
+  printf '{"judge":"%s","seconds":%s,"exit_code":%s,"report":"%s","log":"%s"}\n' \
+    "$judge" "$((end-start))" "$copilot_exit" "$report_path" "$log_path" >"$metrics_path"
+
+  echo "Copilot audit exit code: $copilot_exit"
+  if (( copilot_exit != 0 )); then
+    echo "Warning: Copilot exited with non-zero status for judge ${judge}"
+  fi
+  echo "=== Completed audit for ${judge} in $((end-start))s ==="
+}
+
 audit() {
   load_env
   ensure_requirements
@@ -147,9 +179,11 @@ audit() {
     exit 1
   fi
 
+  mkdir -p "$RESULTS_DIR"
+
   local judge
   for judge in "${judges[@]}"; do
-    copilot --model "$judge" --allow-all --no-ask-user --prompt "Independently audit all implementations under results. For each task/model inspect diff and run tests. Write results/audit-${judge// /_}.md with 0-100 score, correctness, tests, scope, defects, evidence. Do not modify solutions."
+    run_judge_audit "$judge"
   done
 }
 
