@@ -86,6 +86,7 @@ run_model_task() {
 
   end=$(date +%s)
   printf '{"model":"%s","task":"%s","seconds":%s}\n' "$model" "$task_id" "$((end-start))" >"$dir/metrics.json"
+  echo "=== Completed ${model} on ${task_id} in $((end-start))s ==="
 }
 
 run() {
