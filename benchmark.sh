@@ -79,17 +79,25 @@ run_model_task() {
   local dir
   dir=$(prepare_run_dir "$model" "$task_id")
 
-  local start end
+  local start end copilot_exit
   start=$(date +%s)
 
   echo "\n=== Running ${model} on ${task_id} ==="
   echo "Task: $task_file"
   echo "Working dir: $dir"
 
-  copilot --model "$model" --yolo "Read $task_file. Implement only in this directory. Run tests. Write SUMMARY.md with commands and results." 2>&1 | tee "$dir/agent.log" || true
+  set +e
+  copilot --model "$model" --yolo "Read $task_file. Implement only in this directory. Run tests. Write SUMMARY.md with commands and results." 2>&1 | tee "$dir/agent.log"
+  copilot_exit=${PIPESTATUS[0]}
+  set -e
 
   end=$(date +%s)
-  printf '{"model":"%s","task":"%s","seconds":%s}\n' "$model" "$task_id" "$((end-start))" >"$dir/metrics.json"
+  printf '{"model":"%s","task":"%s","seconds":%s,"exit_code":%s}\n' "$model" "$task_id" "$((end-start))" "$copilot_exit" >"$dir/metrics.json"
+
+  echo "Copilot exit code: $copilot_exit"
+  if (( copilot_exit != 0 )); then
+    echo "Warning: Copilot exited with non-zero status for ${model} / ${task_id}"
+  fi
   echo "=== Completed ${model} on ${task_id} in $((end-start))s ==="
 }
 
