@@ -82,7 +82,11 @@ run_model_task() {
   local start end
   start=$(date +%s)
 
-  copilot --model "$model" --yolo "Read $task_file. Implement only in this directory. Run tests. Write SUMMARY.md with commands and results." >"$dir/agent.log" 2>&1 || true
+  echo "\n=== Running ${model} on ${task_id} ==="
+  echo "Task: $task_file"
+  echo "Working dir: $dir"
+
+  copilot --model "$model" --yolo "Read $task_file. Implement only in this directory. Run tests. Write SUMMARY.md with commands and results." 2>&1 | tee "$dir/agent.log" || true
 
   end=$(date +%s)
   printf '{"model":"%s","task":"%s","seconds":%s}\n' "$model" "$task_id" "$((end-start))" >"$dir/metrics.json"
