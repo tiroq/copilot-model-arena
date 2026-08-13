@@ -78,6 +78,8 @@ run_model_task() {
   task_id=$(basename "$task_file" .md)
   local dir
   dir=$(prepare_run_dir "$model" "$task_id")
+  local prompt
+  prompt="Read $task_file. Implement only in this directory. Run tests. Write SUMMARY.md with commands and results."
 
   local start end copilot_exit
   start=$(date +%s)
@@ -87,7 +89,7 @@ run_model_task() {
   echo "Working dir: $dir"
 
   set +e
-  copilot --model "$model" --yolo "Read $task_file. Implement only in this directory. Run tests. Write SUMMARY.md with commands and results." 2>&1 | tee "$dir/agent.log"
+  (cd "$dir" && copilot --model "$model" --allow-all --no-ask-user --prompt "$prompt") 2>&1 | tee "$dir/agent.log"
   copilot_exit=${PIPESTATUS[0]}
   set -e
 
@@ -147,7 +149,7 @@ audit() {
 
   local judge
   for judge in "${judges[@]}"; do
-    copilot --model "$judge" --yolo "Independently audit all implementations under results. For each task/model inspect diff and run tests. Write results/audit-${judge// /_}.md with 0-100 score, correctness, tests, scope, defects, evidence. Do not modify solutions."
+    copilot --model "$judge" --allow-all --no-ask-user --prompt "Independently audit all implementations under results. For each task/model inspect diff and run tests. Write results/audit-${judge// /_}.md with 0-100 score, correctness, tests, scope, defects, evidence. Do not modify solutions."
   done
 }
 
